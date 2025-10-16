@@ -1,0 +1,1 @@
+Rs. {amount} Debited from A/C {senderAccount}

@@ -1,0 +1,1 @@
+Rs. {amount} Credited to A/C {receiverAccount}
