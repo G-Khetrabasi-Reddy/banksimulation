@@ -35,7 +35,6 @@ public class MailConfig {
         mailProps.put("mail.smtp.auth", String.valueOf(authEnabled));
         mailProps.put("mail.smtp.starttls.enable", prop.getProperty("mail.smtp.starttls.enable", "false"));
         mailProps.put("mail.smtp.ssl.enable", prop.getProperty("mail.smtp.ssl.enable", "false"));
-
         if(authEnabled){
             Authenticator authenticator = new Authenticator() {
                 @Override
@@ -60,4 +59,15 @@ public class MailConfig {
     public static String getUsername() {
         return prop.getProperty("mail.username");
     }
+
+    public static int getMailSendDelayMs() {
+        String delay = prop.getProperty("mail.send.delay.ms", "1000"); // default 1s
+        try {
+            return Integer.parseInt(delay);
+        } catch (NumberFormatException e) {
+            System.err.println("Invalid mail.send.delay.ms value, using default 1000ms");
+            return 1000;
+        }
+    }
+
 }

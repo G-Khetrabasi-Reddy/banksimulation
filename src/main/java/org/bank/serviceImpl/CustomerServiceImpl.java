@@ -33,9 +33,21 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     public Optional<Customer> addCustomer(Customer customer) {
         validateCustomer(customer);
+
+        // Check if Aadhar already exists
+        boolean duplicateExists = customerRepo.findAll().stream()
+                .anyMatch(c -> c.getAadharNumber().equals(customer.getAadharNumber())
+                || c.getEmail().equalsIgnoreCase(customer.getEmail()));
+
+        if (duplicateExists) {
+            throw new DuplicateCustomerException(
+                    "Customer with same Aadhar or Email already exists."
+            );
+        }
+
         Optional<Customer> saved = customerRepo.addCustomer(customer);
         if(saved.isEmpty()){
-            throw new DuplicateCustomerException("Failed to add customer. Possibly duplicate Aadhar: " + customer.getAadharNumber());
+            throw new DuplicateCustomerException("Failed to add customer. Please check the input data.");
         }
         return saved;
     }
@@ -65,12 +77,12 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
-    public boolean deleteCustomer(long customerId) {
-        boolean deleted =  customerRepo.deleteCustomer(customerId);
-        if(!deleted){
-            throw new CustomerNotFoundException("Cannot delete. Customer not found with ID " + customerId);
+    public Optional<Customer> findByEmail(String email) {
+        Optional<Customer> customer = customerRepo.findByEmail(email);
+        if (customer.isEmpty()) {
+            throw new CustomerNotFoundException("Customer not found with email " + email);
         }
-        return true;
+        return customer;
     }
 
     //Validation methods
@@ -90,6 +102,17 @@ public class CustomerServiceImpl implements CustomerService {
         if (isNotBlank(customer.getAddress())) {
             throw new InvalidCustomerDataException("Address cannot be empty");
         }
+        if (customer.getDob() == null) {
+            throw new InvalidCustomerDataException("Date of Birth (dob) cannot be null");
+        }
+        if (isNotBlank(customer.getCustomerPin()) || !customer.getCustomerPin().matches("^\\d{6}$")) {
+            throw new InvalidCustomerDataException("Invalid PIN. Must be 6 digits.");
+        }
+        if (customer.getPassword() != null) {
+            if (isNotBlank(customer.getPassword()) || customer.getPassword().length() < 6) {
+                throw new InvalidCustomerDataException("Invalid Password. Must be at least 6 Digits.");
+            }
+        }
     }
 
     private boolean isValidName(String name) {
@@ -104,7 +127,5 @@ public class CustomerServiceImpl implements CustomerService {
         return aadhar != null && AADHAR_PATTERN.matcher(aadhar).matches();
     }
 
-    private boolean isNotBlank(String str) {
-        return str == null || str.trim().isEmpty();
-    }
+    private boolean isNotBlank(String str) { return str == null || str.trim().isEmpty(); }
 }

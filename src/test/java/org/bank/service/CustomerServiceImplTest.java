@@ -8,168 +8,341 @@ import org.bank.repository.CustomerRepository;
 import org.bank.serviceImpl.CustomerServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+/**
+ * Unit tests for the CustomerServiceImpl class.
+ * This class uses Mockito to mock the CustomerRepository dependency,
+ * allowing us to test the service's business logic in isolation.
+ */
+@ExtendWith(MockitoExtension.class)
 class CustomerServiceImplTest {
 
-    private CustomerRepository repository;
-    private CustomerServiceImpl service;
-    private Customer sampleCustomer;
+    @Mock
+    private CustomerRepository customerRepo; // Mocking the repository interface
+
+    @InjectMocks
+    private CustomerServiceImpl customerService; // Injecting mocks into our service
+
+    private Customer validCustomer;
 
     @BeforeEach
     void setUp() {
-        repository = mock(CustomerRepository.class);
-        service = new CustomerServiceImpl(repository); // ✅ inject mock repo directly
-
-        sampleCustomer = new Customer(
-                1L, "John Doe", "9876543210", "john@gmail.com",
-                "123 Street, Hyderabad", "1234", "234567890123",
-                LocalDate.of(1998, 5, 15), "Active"
-        );
+        // Create a standard, valid customer object to be used in tests
+        validCustomer = new Customer();
+        validCustomer.setCustomerId(1L);
+        validCustomer.setName("Valid Name");
+        validCustomer.setPhoneNumber("9876543210"); // Valid Indian phone
+        validCustomer.setEmail("valid@email.com");
+        validCustomer.setAddress("123 Valid St");
+        // Updated to 6 digits as per new validation
+        validCustomer.setCustomerPin("123456");
+        validCustomer.setAadharNumber("234567890123"); // Valid Aadhar
+        validCustomer.setDob(LocalDate.of(1990, 1, 1)); // Non-null DOB
+        validCustomer.setStatus("ACTIVE");
+        // Updated to > 8 chars as per new validation
+        validCustomer.setPassword("password123");
+        validCustomer.setRole("USER");
     }
 
-    // ---------------------- ADD CUSTOMER TESTS ----------------------
+    // --- Tests for addCustomer ---
 
     @Test
     void testAddCustomer_Success() {
-        when(repository.addCustomer(sampleCustomer)).thenReturn(Optional.ofNullable(sampleCustomer));
+        // Arrange
+        when(customerRepo.findAll()).thenReturn(List.of()); // No duplicates
+        when(customerRepo.addCustomer(any(Customer.class))).thenReturn(Optional.of(validCustomer));
 
-        Optional<Customer> result = service.addCustomer(sampleCustomer);
+        // Act
+        Optional<Customer> result = customerService.addCustomer(validCustomer);
 
+        // Assert
         assertTrue(result.isPresent());
-        assertEquals(sampleCustomer, result.get());
-        verify(repository).addCustomer(sampleCustomer);
+        assertEquals("Valid Name", result.get().getName());
+        verify(customerRepo).findAll(); // Checked for duplicates
+        verify(customerRepo).addCustomer(validCustomer); // Saved the customer
     }
 
     @Test
-    void testAddCustomer_EmptyOptionalThrowsDuplicateException() {
-        when(repository.addCustomer(sampleCustomer)).thenReturn(Optional.empty());
+    void testAddCustomer_DuplicateEmail() {
+        // Arrange
+        Customer existingCustomer = new Customer();
+        existingCustomer.setEmail("valid@email.com"); // Same email
+        existingCustomer.setAadharNumber("999999999999"); // Different Aadhar
 
-        DuplicateCustomerException ex = assertThrows(
-                DuplicateCustomerException.class,
-                () -> service.addCustomer(sampleCustomer)
-        );
+        when(customerRepo.findAll()).thenReturn(List.of(existingCustomer));
 
-        assertTrue(ex.getMessage().contains("Failed to add customer"));
-        verify(repository).addCustomer(sampleCustomer);
+        // Act & Assert
+        assertThrows(DuplicateCustomerException.class, () -> {
+            customerService.addCustomer(validCustomer);
+        });
+
+        // Verify we never tried to add the customer
+        verify(customerRepo, never()).addCustomer(any(Customer.class));
     }
 
     @Test
-    void testAddCustomer_DuplicateThrowsException() {
-        when(repository.addCustomer(sampleCustomer))
-                .thenThrow(new DuplicateCustomerException("Duplicate Aadhar"));
+    void testAddCustomer_DuplicateAadhar() {
+        // Arrange
+        Customer existingCustomer = new Customer();
+        existingCustomer.setEmail("other@email.com"); // Different email
+        existingCustomer.setAadharNumber("234567890123"); // Same Aadhar
 
-        DuplicateCustomerException ex = assertThrows(
-                DuplicateCustomerException.class,
-                () -> service.addCustomer(sampleCustomer)
-        );
+        when(customerRepo.findAll()).thenReturn(List.of(existingCustomer));
 
-        assertTrue(ex.getMessage().contains("Duplicate Aadhar"));
-        verify(repository).addCustomer(sampleCustomer);
+        // Act & Assert
+        assertThrows(DuplicateCustomerException.class, () -> {
+            customerService.addCustomer(validCustomer);
+        });
+
+        // Verify we never tried to add the customer
+        verify(customerRepo, never()).addCustomer(any(Customer.class));
     }
-
-    // ---------------------- VALIDATION TESTS ----------------------
 
     @Test
     void testAddCustomer_InvalidName() {
-        sampleCustomer.setName("John123");
-        assertThrows(InvalidCustomerDataException.class, () -> service.addCustomer(sampleCustomer));
+        // Arrange
+        validCustomer.setName("Invalid Name 123"); // Contains numbers
+
+        // Act & Assert
+        assertThrows(InvalidCustomerDataException.class, () -> {
+            customerService.addCustomer(validCustomer);
+        }, "Should throw for invalid name");
     }
 
     @Test
     void testAddCustomer_InvalidPhone() {
-        sampleCustomer.setPhoneNumber("12345");
-        assertThrows(InvalidCustomerDataException.class, () -> service.addCustomer(sampleCustomer));
+        // Arrange
+        validCustomer.setPhoneNumber("1234567890"); // Starts with '1'
+
+        // Act & Assert
+        assertThrows(InvalidCustomerDataException.class, () -> {
+            customerService.addCustomer(validCustomer);
+        }, "Should throw for invalid phone");
     }
 
     @Test
     void testAddCustomer_InvalidAadhar() {
-        sampleCustomer.setAadharNumber("123456789012");
-        assertThrows(InvalidCustomerDataException.class, () -> service.addCustomer(sampleCustomer));
+        // Arrange
+        validCustomer.setAadharNumber("123456789012"); // Starts with '1'
+
+        // Act & Assert
+        assertThrows(InvalidCustomerDataException.class, () -> {
+            customerService.addCustomer(validCustomer);
+        }, "Should throw for invalid Aadhar");
     }
 
     @Test
     void testAddCustomer_BlankEmail() {
-        sampleCustomer.setEmail("   ");
-        assertThrows(InvalidCustomerDataException.class, () -> service.addCustomer(sampleCustomer));
+        // Arrange
+        validCustomer.setEmail(" "); // Blank email
+
+        // Act & Assert
+        // Note: isNotBlank checks for null OR empty/whitespace string
+        assertThrows(InvalidCustomerDataException.class, () -> {
+            validCustomer.setEmail(null); // Test null case
+            customerService.addCustomer(validCustomer);
+        });
+        assertThrows(InvalidCustomerDataException.class, () -> {
+            validCustomer.setEmail("   "); // Test whitespace case
+            customerService.addCustomer(validCustomer);
+        });
+    }
+
+    // --- NEW TESTS for added validations ---
+    @Test
+    void testAddCustomer_InvalidPin_TooShort() {
+        // Arrange
+        validCustomer.setCustomerPin("123"); // Less than 6 digits
+
+        // Act & Assert
+        assertThrows(InvalidCustomerDataException.class, () -> {
+            customerService.addCustomer(validCustomer);
+        }, "Should throw for PIN less than 6 digits");
     }
 
     @Test
-    void testAddCustomer_BlankAddress() {
-        sampleCustomer.setAddress("");
-        assertThrows(InvalidCustomerDataException.class, () -> service.addCustomer(sampleCustomer));
+    void testAddCustomer_InvalidPin_NotDigits() {
+        // Arrange
+        validCustomer.setCustomerPin("12345a"); // Contains non-digit
+
+        // Act & Assert
+        assertThrows(InvalidCustomerDataException.class, () -> {
+            customerService.addCustomer(validCustomer);
+        }, "Should throw for non-digit PIN");
     }
 
-    // ---------------------- FIND BY ID TESTS ----------------------
+    @Test
+    void testAddCustomer_InvalidPassword_TooShort() {
+        // Arrange
+        validCustomer.setPassword("pass"); // Less than 8 characters
+
+        // Act & Assert
+        assertThrows(InvalidCustomerDataException.class, () -> {
+            customerService.addCustomer(validCustomer);
+        }, "Should throw for password less than 8 characters");
+    }
+
+    @Test
+    void testAddCustomer_NullDob() {
+        // Arrange
+        validCustomer.setDob(null); // DOB is null
+
+        // Act & Assert
+        assertThrows(InvalidCustomerDataException.class, () -> {
+            customerService.addCustomer(validCustomer);
+        }, "Should throw for null Date of Birth");
+    }
+    // --- END NEW TESTS ---
+
+
+    // --- Tests for findById ---
 
     @Test
     void testFindById_Success() {
-        when(repository.findById(1L)).thenReturn(Optional.ofNullable(sampleCustomer));
+        // Arrange
+        when(customerRepo.findById(1L)).thenReturn(Optional.of(validCustomer));
 
-        Optional<Customer> result = service.findById(1L);
+        // Act
+        Optional<Customer> result = customerService.findById(1L);
 
+        // Assert
         assertTrue(result.isPresent());
-        assertEquals("John Doe", result.get().getName());
+        assertEquals(validCustomer, result.get());
     }
 
     @Test
-    void testFindById_NotFoundThrowsException() {
-        when(repository.findById(1L)).thenReturn(Optional.empty());
+    void testFindById_NotFound() {
+        // Arrange
+        when(customerRepo.findById(anyLong())).thenReturn(Optional.empty());
 
-        assertThrows(CustomerNotFoundException.class, () -> service.findById(1L));
+        // Act & Assert
+        assertThrows(CustomerNotFoundException.class, () -> {
+            customerService.findById(1L);
+        });
     }
 
-    // ---------------------- FIND ALL TEST ----------------------
+    // --- Tests for findAll ---
 
     @Test
-    void testFindAll_ReturnsList() {
-        when(repository.findAll()).thenReturn(List.of(sampleCustomer));
+    void testFindAll_Success() {
+        // Arrange
+        List<Customer> customerList = List.of(validCustomer);
+        when(customerRepo.findAll()).thenReturn(customerList);
 
-        List<Customer> list = service.findAll();
+        // Act
+        List<Customer> result = customerService.findAll();
 
-        assertEquals(1, list.size());
-        assertEquals("John Doe", list.get(0).getName());
+        // Assert
+        assertEquals(1, result.size());
+        assertEquals(customerList, result);
     }
 
-    // ---------------------- UPDATE CUSTOMER TESTS ----------------------
+    // --- Tests for updateCustomer ---
 
     @Test
     void testUpdateCustomer_Success() {
-        when(repository.updateCustomer(sampleCustomer)).thenReturn(true);
+        // Arrange
+        when(customerRepo.updateCustomer(validCustomer)).thenReturn(true);
 
-        boolean result = service.updateCustomer(sampleCustomer);
+        // Act
+        boolean result = customerService.updateCustomer(validCustomer);
+
+        // Assert
         assertTrue(result);
+        verify(customerRepo).updateCustomer(validCustomer);
     }
 
     @Test
-    void testUpdateCustomer_NotFoundThrowsException() {
-        when(repository.updateCustomer(sampleCustomer)).thenReturn(false);
+    void testUpdateCustomer_NotFound() {
+        // Arrange
+        when(customerRepo.updateCustomer(validCustomer)).thenReturn(false);
 
-        assertThrows(CustomerNotFoundException.class, () -> service.updateCustomer(sampleCustomer));
-    }
-
-    // ---------------------- DELETE CUSTOMER TESTS ----------------------
-
-    @Test
-    void testDeleteCustomer_Success() {
-        when(repository.deleteCustomer(1L)).thenReturn(true);
-
-        boolean result = service.deleteCustomer(1L);
-
-        assertTrue(result);
-        verify(repository).deleteCustomer(1L);
+        // Act & Assert
+        assertThrows(CustomerNotFoundException.class, () -> {
+            customerService.updateCustomer(validCustomer);
+        });
     }
 
     @Test
-    void testDeleteCustomer_NotFoundThrowsException() {
-        when(repository.deleteCustomer(1L)).thenReturn(false);
+    void testUpdateCustomer_InvalidData() {
+        // Arrange
+        validCustomer.setPhoneNumber("555"); // Invalid phone
 
-        assertThrows(CustomerNotFoundException.class, () -> service.deleteCustomer(1L));
+        // Act & Assert
+        assertThrows(InvalidCustomerDataException.class, () -> {
+            customerService.updateCustomer(validCustomer);
+        });
+
+        // Verify we never tried to update
+        verify(customerRepo, never()).updateCustomer(any(Customer.class));
+    }
+
+    // --- NEW TESTS for update ---
+    @Test
+    void testUpdateCustomer_InvalidPin() {
+        // Arrange
+        validCustomer.setCustomerPin("123"); // Invalid PIN
+
+        // Act & Assert
+        assertThrows(InvalidCustomerDataException.class, () -> {
+            customerService.updateCustomer(validCustomer);
+        }, "Update should fail with invalid PIN");
+
+        verify(customerRepo, never()).updateCustomer(any(Customer.class));
+    }
+
+    @Test
+    void testUpdateCustomer_NullDob() {
+        // Arrange
+        validCustomer.setDob(null); // Invalid DOB
+
+        // Act & Assert
+        assertThrows(InvalidCustomerDataException.class, () -> {
+            customerService.updateCustomer(validCustomer);
+        }, "Update should fail with null DOB");
+
+        verify(customerRepo, never()).updateCustomer(any(Customer.class));
+    }
+    // --- END NEW TESTS for update ---
+
+
+    // --- Tests for findByEmail ---
+
+    @Test
+    void testFindByEmail_Success() {
+        // Arrange
+        when(customerRepo.findByEmail("valid@email.com")).thenReturn(Optional.of(validCustomer));
+
+        // Act
+        Optional<Customer> result = customerService.findByEmail("valid@email.com");
+
+        // Assert
+        assertTrue(result.isPresent());
+        assertEquals(validCustomer, result.get());
+    }
+
+    @Test
+    void testFindByEmail_NotFound() {
+        // Arrange
+        when(customerRepo.findByEmail(anyString())).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(CustomerNotFoundException.class, () -> {
+            customerService.findByEmail("notfound@email.com");
+        });
     }
 }

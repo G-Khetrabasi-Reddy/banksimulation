@@ -1,4 +1,26 @@
 package org.bank.config;
 
-public class CustomJacksonProvider {
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import jakarta.ws.rs.ext.ContextResolver;
+import jakarta.ws.rs.ext.Provider;
+
+@Provider
+public class CustomJacksonProvider implements ContextResolver<ObjectMapper> {
+
+    private final ObjectMapper mapper;
+
+    public CustomJacksonProvider() {
+        mapper = new ObjectMapper();
+        mapper.registerModule(new Jdk8Module());      // For Optional
+        mapper.registerModule(new JavaTimeModule());  // For LocalDate/LocalDateTime
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    }
+
+    @Override
+    public ObjectMapper getContext(Class<?> type) {
+        return mapper;
+    }
 }

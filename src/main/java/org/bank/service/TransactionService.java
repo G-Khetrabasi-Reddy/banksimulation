@@ -11,5 +11,6 @@ public interface TransactionService {
     List<Transaction> getTransactionsByAccountNumber(String accountNumber);
     List<Transaction> getAllTransactions();
     String getAccountNumberById(long accountId);
+    boolean isAccountOwnedByCustomer(String accountNumber, long customerId);
 }
 

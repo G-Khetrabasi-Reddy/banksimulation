@@ -86,23 +86,6 @@ public class AccountRepositoryImpl implements AccountRepository {
     }
 
     @Override
-    public  boolean updateBalance(String accountNumber, double newBalance) {
-        String sql = "UPDATE accounts SET balance = ? WHERE accountNumber = ?";
-
-        try(Connection conn = DBConfig.getConnection();
-            PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setDouble(1, newBalance);
-            stmt.setString(2, accountNumber);
-            return stmt.executeUpdate() > 0;
-        } catch (SQLException e) {
-            handleSQLException(e);
-            return  false;
-        }
-    }
-
-
-    @Override
     public boolean updateAccountDetails(Account account) {
         String sql = "UPDATE accounts SET accountType = ?, accountName = ?, status = ?, ifscCode = ? WHERE accountNumber = ?";
         try (Connection conn = DBConfig.getConnection();
@@ -122,18 +105,25 @@ public class AccountRepositoryImpl implements AccountRepository {
     }
 
     @Override
-    public boolean deleteAccount(String accountNumber) {
-        String sql = "DELETE FROM accounts WHERE accountNumber = ?";
+    public List<Account> findByCustomerId(long customerId) {
+        List<Account> accounts = new ArrayList<>();
+        String sql = "SELECT * FROM accounts WHERE customerId = ?";
+
         try (Connection conn = DBConfig.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, accountNumber);
-            return stmt.executeUpdate() > 0;
+            stmt.setLong(1, customerId);
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    accounts.add(mapToAccount(rs));
+                }
+            }
         } catch (SQLException e) {
             handleSQLException(e);
-            return false;
         }
+        return accounts;
     }
+
 
     private Account mapToAccount(ResultSet rs) throws SQLException {
         return new Account(

@@ -158,7 +158,8 @@ public class TransactionServiceImpl implements TransactionService {
         Account account = accountRepo.findByAccountNumber(accountNumber)
                 .orElseThrow(() -> new AccountNotFoundException("Account with number " + accountNumber + " not found."));
 
-        return transactionRepo.findByAccountId(account.getAccountId());    }
+        return transactionRepo.findByAccountId(account.getAccountId());
+    }
 
     @Override
     public List<Transaction> getAllTransactions() {
@@ -170,5 +171,13 @@ public class TransactionServiceImpl implements TransactionService {
         return accountRepo.findAccountNumberById(accountId)
                 .orElse("UNKNOWN");  // Returns "UNKNOWN" if accountId does not exist
     }
+
+    @Override
+    public boolean isAccountOwnedByCustomer(String accountNumber, long customerId) {
+        return accountRepo.findByAccountNumber(accountNumber)
+                .map(account -> account.getCustomerId() == customerId)  // primitive long comparison
+                .orElse(false);  // account not found -> not owned
+    }
+
 
 }

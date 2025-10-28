@@ -16,12 +16,14 @@ public class DBSetup {
                     customerId BIGINT PRIMARY KEY AUTO_INCREMENT,
                     name VARCHAR(100) NOT NULL,
                     phoneNumber VARCHAR(15) NOT NULL,
-                    email VARCHAR(100),
+                    email VARCHAR(100) NOT NULL UNIQUE,
                     address VARCHAR(255),
                     customerPin VARCHAR(10) NOT NULL,
                     aadharNumber VARCHAR(20) UNIQUE NOT NULL,
                     dob DATE NOT NULL,
-                    status VARCHAR(20) NOT NULL
+                    status VARCHAR(20) NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    role VARCHAR(20) NOT NULL DEFAULT 'USER'
                 );
                 """;
 
@@ -71,8 +73,43 @@ public class DBSetup {
         }
     }
 
+    public static void addDefaultAdmin(){
+        String addAdminUser = """
+                INSERT IGNORE INTO customers 
+                (name, phoneNumber, email, address, customerPin, aadharNumber, dob, status, password, role)
+                VALUES
+                (
+                    'Admin User', 
+                    '9876543210', 
+                    'banksimulation3@gmail.com', 
+                    '123 Bank Head Quarters, Mumbai', 
+                    '000000', 
+                    '123456789012', 
+                    '1990-01-01', 
+                    'ACTIVE', 
+                    'Admin@123', 
+                    'ADMIN'
+                );
+                """;
+
+        try (Connection conn = DBConfig.getConnection();
+             Statement stmt = conn.createStatement()) {
+
+            int rowsAffected = stmt.executeUpdate(addAdminUser);
+
+            if (rowsAffected > 0) {
+                System.out.println("Default admin user created successfully.");
+            } else {
+                System.out.println("Default admin user already exists.");
+            }
+        }catch (SQLException e){
+            e.printStackTrace();
+            throw new RuntimeException("Failed to add default admin to customers table: " + e.getMessage());
+        }
+    }
 
     public static void main(String[] args) {
         createTables();
+        addDefaultAdmin();
     }
 }

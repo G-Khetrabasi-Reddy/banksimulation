@@ -3,14 +3,17 @@ package org.bank.controller;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import org.bank.config.AuthenticationFilter;
 import org.bank.exception.InvalidCustomerDataException;
+import org.bank.exception.CustomerNotFoundException;
 import org.bank.model.Customer;
 import org.bank.service.CustomerService;
 import org.bank.serviceImpl.CustomerServiceImpl;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Path("/customer")
 @Produces(MediaType.APPLICATION_JSON)
@@ -19,44 +22,31 @@ public class CustomerController {
 
     private final CustomerService service;
 
-    //Default Constructor (for Runtime)
     public CustomerController(){
         this.service = new CustomerServiceImpl();
     }
-    //Overloaded constructor (for tests / mocking)
+
     public CustomerController(CustomerService service){
         this.service = service;
     }
 
-    // POST -> onboard a new customer
-    @POST
-    @Path("/add")
-    public Response addCustomer(Customer customer) {
-        Optional<Customer> savedCustomer = service.addCustomer(customer);
-        return Response.status(Response.Status.CREATED).entity(Map.of(
-                "message", "Customer added successfully!",
-                "customer", savedCustomer
-        )).build();
-    }
-
-    // GET -> fetch customer by ID (ID from JSON body)
+    // GET -> fetch customer by ID
     @GET
     @Path("/getbyid")
-    public Response getCustomerById(Map<String, Object> request) {
-        Object idObj = request.get("customerId");
-        if(idObj == null){
+    public Response getCustomerById(@QueryParam("customerId") Long customerId) {
+        if(customerId == null){
             throw new InvalidCustomerDataException("customerId is required");
         }
 
-        long customerId = ((Number) request.get("customerId")).longValue();
-        Optional<Customer> fetchedCustomer = service.findById(customerId);
+        Customer customerObj = service.findById(customerId).orElseThrow(
+                () -> new CustomerNotFoundException("Customer not found with ID: " + customerId)
+        );
 
         return Response.ok(Map.of(
                 "message", "Customer fetched successfully",
-                "customer", fetchedCustomer
+                "customer", customerObj
         )).build();
     }
-
 
     // GET -> fetch all customers
     @GET
@@ -65,32 +55,27 @@ public class CustomerController {
         List<Customer> customers = service.findAll();
         return Response.ok(Map.of(
                 "message", "Customers fetched successfully",
-                "customers",customers
+                "customers", customers
         )).build();
     }
 
-    // PUT -> update customer details
+    // PUT -> update customer details (ownership enforced)
     @PUT
     @Path("/update")
-    public Response updateCustomer(Customer customer) {
+    public Response updateCustomer(@Context ContainerRequestContext requestContext, Customer customer) {
+        Customer loggedInCustomer = (Customer) requestContext.getProperty(AuthenticationFilter.SESSION_USER_PROPERTY);
+
+        if (!loggedInCustomer.getRole().equalsIgnoreCase("ADMIN") &&
+                loggedInCustomer.getCustomerId() != (customer.getCustomerId())) {
+            throw new InvalidCustomerDataException("You can only update your own profile.");
+        }
+
         boolean result = service.updateCustomer(customer);
-        return  Response.ok(Map.of(
+        return Response.ok(Map.of(
                 "message", "Customer updated successfully",
                 "updated", result
         )).build();
     }
 
-    // DELETE -> remove customer (ID from JSON body)
-    @DELETE
-    @Path("/delete")
-    public Response deleteCustomer(Map<String, Object> request) {
-        long customerId = ((Number) request.get("customerId")).longValue();
-        boolean result = service.deleteCustomer(customerId);
-
-        return Response.ok(Map.of(
-                "message", "Customer deleted successfully",
-                "deleted", result
-        )).build();
-    }
-
+    // DELETE removed (customers cannot be deleted)
 }

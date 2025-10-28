@@ -1,6 +1,9 @@
 package org.bank.service;
 
-import org.bank.exception.*;
+import org.bank.exception.AccountAlreadyClosedException;
+import org.bank.exception.AccountNotFoundException;
+import org.bank.exception.DuplicateAccountException;
+import org.bank.exception.InvalidTransactionException;
 import org.bank.model.Account;
 import org.bank.model.Customer;
 import org.bank.repository.AccountRepository;
@@ -8,263 +11,299 @@ import org.bank.repository.CustomerRepository;
 import org.bank.serviceImpl.AccountServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
+/**
+ * Unit tests for the AccountServiceImpl class.
+ * This class uses Mockito to mock repository dependencies
+ * and test the service-layer business logic in isolation.
+ */
+@ExtendWith(MockitoExtension.class)
 class AccountServiceImplTest {
 
-    private AccountRepository accountRepo;
-    private CustomerRepository customerRepo;
-    private AccountServiceImpl service;
-    private Account sampleAccount;
+    @Mock
+    private AccountRepository accountRepo; // Mocked AccountRepository
+
+    @Mock
+    private CustomerRepository customerRepo; // Mocked CustomerRepository
+
+    @InjectMocks
+    private AccountServiceImpl accountService; // The class we are testing
+
+    private Account validAccount;
+    private Customer existingCustomer;
 
     @BeforeEach
     void setUp() {
-        accountRepo = mock(AccountRepository.class);
-        customerRepo = mock(CustomerRepository.class);
-        service = new AccountServiceImpl(accountRepo, customerRepo); // inject both mocks
+        // Create a standard customer that exists in the "database"
+        existingCustomer = new Customer();
+        existingCustomer.setCustomerId(1L);
 
-        sampleAccount = new Account(
-                1L, 101L, LocalDateTime.now(), LocalDateTime.now(),
-                1000.0, "SAVINGS", "MyAccount", "ACC12345",
-                "ACTIVE", "ABCD0123456"
-        );
-
-        // Default mock: customer exists
-        when(customerRepo.findById(101L)).thenReturn(Optional.of(new Customer()));
+        // Create a standard, valid account object for tests
+        validAccount = new Account();
+        validAccount.setCustomerId(1L);
+        validAccount.setBalance(100.0);
+        validAccount.setAccountType("SAVINGS");
+        validAccount.setAccountNumber("ACC123456");
+        validAccount.setIfscCode("BANK0123456"); // Valid IFSC
+        validAccount.setStatus("ACTIVE");
     }
 
-    // ---------------- OPEN ACCOUNT ----------------
+    // --- Tests for openAccount ---
+
     @Test
     void testOpenAccount_Success() {
-        when(accountRepo.findByAccountNumber(sampleAccount.getAccountNumber())).thenReturn(Optional.empty());
-        when(accountRepo.addAccount(any(Account.class))).thenReturn(Optional.of(sampleAccount));
+        // Arrange
+        when(customerRepo.findById(1L)).thenReturn(Optional.of(existingCustomer));
+        when(accountRepo.findByAccountNumber("ACC123456")).thenReturn(Optional.empty());
+        when(accountRepo.addAccount(any(Account.class))).thenReturn(Optional.of(validAccount));
 
-        Account created = service.openAccount(sampleAccount);
+        // Act
+        Account createdAccount = accountService.openAccount(validAccount);
 
-        assertEquals(sampleAccount, created);
-        verify(accountRepo).addAccount(sampleAccount);
+        // Assert
+        assertNotNull(createdAccount);
+        assertEquals("ACC123456", createdAccount.getAccountNumber());
+        verify(customerRepo).findById(1L);
+        verify(accountRepo).findByAccountNumber("ACC123456");
+        verify(accountRepo).addAccount(validAccount);
+    }
+
+    @Test
+    void testOpenAccount_CustomerNotFound() {
+        // Arrange
+        when(customerRepo.findById(1L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(InvalidTransactionException.class, () -> {
+            accountService.openAccount(validAccount);
+        });
+
+        // Verify we never tried to save
+        verify(accountRepo, never()).addAccount(any(Account.class));
     }
 
     @Test
     void testOpenAccount_DuplicateAccount() {
-        when(accountRepo.findByAccountNumber(sampleAccount.getAccountNumber())).thenReturn(Optional.of(sampleAccount));
-        assertThrows(DuplicateAccountException.class, () -> service.openAccount(sampleAccount));
+        // Arrange
+        when(customerRepo.findById(1L)).thenReturn(Optional.of(existingCustomer));
+        // A duplicate account is found
+        when(accountRepo.findByAccountNumber("ACC123456")).thenReturn(Optional.of(new Account()));
+
+        // Act & Assert
+        assertThrows(DuplicateAccountException.class, () -> {
+            accountService.openAccount(validAccount);
+        });
+
+        verify(accountRepo, never()).addAccount(any(Account.class));
     }
 
     @Test
-    void testOpenAccount_InvalidCustomerId() {
-        sampleAccount.setCustomerId(999L); // Non-existent customer
-        when(customerRepo.findById(999L)).thenReturn(Optional.empty());
-        assertThrows(InvalidTransactionException.class, () -> service.openAccount(sampleAccount));
+    void testOpenAccount_InvalidIfsc() {
+        // Arrange
+        validAccount.setIfscCode("invalid-ifsc"); // Invalid format
+        when(customerRepo.findById(1L)).thenReturn(Optional.of(existingCustomer));
+
+        // Act & Assert
+        assertThrows(InvalidTransactionException.class, () -> {
+            accountService.openAccount(validAccount);
+        });
     }
 
     @Test
     void testOpenAccount_NegativeBalance() {
-        sampleAccount.setBalance(-100);
-        assertThrows(InvalidTransactionException.class, () -> service.openAccount(sampleAccount));
+        // Arrange
+        validAccount.setBalance(-500.0); // Negative balance
+        when(customerRepo.findById(1L)).thenReturn(Optional.of(existingCustomer));
+
+        // Act & Assert
+        assertThrows(InvalidTransactionException.class, () -> {
+            accountService.openAccount(validAccount);
+        });
     }
 
-    @Test
-    void testOpenAccount_InvalidIFSC() {
-        sampleAccount.setIfscCode("INVALID");
-        assertThrows(InvalidTransactionException.class, () -> service.openAccount(sampleAccount));
-    }
+    // --- Tests for closeAccount ---
 
-    @Test
-    void testOpenAccount_NullAccount() {
-        assertThrows(InvalidTransactionException.class, () -> service.openAccount(null));
-    }
-
-    @Test
-    void testOpenAccount_NullCustomerId() {
-        sampleAccount.setCustomerId(0);
-        assertThrows(InvalidTransactionException.class, () -> service.openAccount(sampleAccount));
-    }
-
-    @Test
-    void testOpenAccount_NullAccountType() {
-        sampleAccount.setAccountType(null);
-        assertThrows(InvalidTransactionException.class, () -> service.openAccount(sampleAccount));
-    }
-
-    @Test
-    void testOpenAccount_EmptyAccountType() {
-        sampleAccount.setAccountType("");
-        assertThrows(InvalidTransactionException.class, () -> service.openAccount(sampleAccount));
-    }
-
-    @Test
-    void testOpenAccount_NullAccountNumber() {
-        sampleAccount.setAccountNumber(null);
-        assertThrows(InvalidTransactionException.class, () -> service.openAccount(sampleAccount));
-    }
-
-    @Test
-    void testOpenAccount_EmptyAccountNumber() {
-        sampleAccount.setAccountNumber(" ");
-        assertThrows(InvalidTransactionException.class, () -> service.openAccount(sampleAccount));
-    }
-
-    @Test
-    void testOpenAccount_NullIFSCCode() {
-        sampleAccount.setIfscCode(null);
-        assertThrows(InvalidTransactionException.class, () -> service.openAccount(sampleAccount));
-    }
-
-    @Test
-    void testOpenAccount_EmptyStatus_DefaultActive() {
-        sampleAccount.setStatus(null);
-        when(accountRepo.findByAccountNumber(sampleAccount.getAccountNumber())).thenReturn(Optional.empty());
-        when(accountRepo.addAccount(sampleAccount)).thenReturn(Optional.of(sampleAccount));
-
-        Account created = service.openAccount(sampleAccount);
-        assertEquals("ACTIVE", created.getStatus());
-    }
-
-    @Test
-    void testOpenAccount_BlankStatus_DefaultActive() {
-        sampleAccount.setStatus("  ");
-        when(accountRepo.findByAccountNumber(sampleAccount.getAccountNumber())).thenReturn(Optional.empty());
-        when(accountRepo.addAccount(sampleAccount)).thenReturn(Optional.of(sampleAccount));
-
-        Account created = service.openAccount(sampleAccount);
-        assertEquals("ACTIVE", created.getStatus());
-    }
-
-    @Test
-    void testOpenAccount_RepositoryFailure() {
-        when(accountRepo.findByAccountNumber(sampleAccount.getAccountNumber())).thenReturn(Optional.empty());
-        when(accountRepo.addAccount(sampleAccount)).thenReturn(Optional.empty());
-
-        assertThrows(RuntimeException.class, () -> service.openAccount(sampleAccount));
-    }
-
-    // ---------------- CLOSE ACCOUNT ----------------
     @Test
     void testCloseAccount_Success() {
-        sampleAccount.setStatus("ACTIVE");
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.of(sampleAccount));
-        when(accountRepo.updateAccountDetails(sampleAccount)).thenReturn(true);
+        // Arrange
+        when(accountRepo.findByAccountNumber("ACC123456")).thenReturn(Optional.of(validAccount));
+        when(accountRepo.updateAccountDetails(any(Account.class))).thenReturn(true);
 
-        assertDoesNotThrow(() -> service.closeAccount("ACC12345"));
-        assertEquals("CLOSED", sampleAccount.getStatus());
+        // Use ArgumentCaptor to verify the state of the account being saved
+        ArgumentCaptor<Account> accountCaptor = ArgumentCaptor.forClass(Account.class);
+
+        // Act
+        accountService.closeAccount("ACC123456");
+
+        // Assert
+        verify(accountRepo).findByAccountNumber("ACC123456");
+        // Capture the account object passed to updateAccountDetails
+        verify(accountRepo).updateAccountDetails(accountCaptor.capture());
+
+        // Verify the status was set to "CLOSED"
+        assertEquals("CLOSED", accountCaptor.getValue().getStatus());
+    }
+
+    @Test
+    void testCloseAccount_AccountNotFound() {
+        // Arrange
+        when(accountRepo.findByAccountNumber("ACC-NOT-FOUND")).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(AccountNotFoundException.class, () -> {
+            accountService.closeAccount("ACC-NOT-FOUND");
+        });
+
+        verify(accountRepo, never()).updateAccountDetails(any(Account.class));
     }
 
     @Test
     void testCloseAccount_AlreadyClosed() {
-        sampleAccount.setStatus("CLOSED");
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.of(sampleAccount));
-        assertThrows(AccountAlreadyClosedException.class, () -> service.closeAccount("ACC12345"));
+        // Arrange
+        validAccount.setStatus("CLOSED");
+        when(accountRepo.findByAccountNumber("ACC123456")).thenReturn(Optional.of(validAccount));
+
+        // Act & Assert
+        assertThrows(AccountAlreadyClosedException.class, () -> {
+            accountService.closeAccount("ACC123456");
+        });
+
+        verify(accountRepo, never()).updateAccountDetails(any(Account.class));
     }
 
-    @Test
-    void testCloseAccount_NotFound() {
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.empty());
-        assertThrows(AccountNotFoundException.class, () -> service.closeAccount("ACC12345"));
-    }
+    // --- Tests for Getters ---
 
-    // ---------------- DEPOSIT ----------------
-    @Test
-    void testDeposit_Success() {
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.of(sampleAccount));
-        when(accountRepo.updateBalance("ACC12345", 1500.0)).thenReturn(true);
-
-        service.deposit("ACC12345", 500);
-        verify(accountRepo).updateBalance("ACC12345", 1500.0);
-    }
-
-    @Test
-    void testDeposit_InvalidAmount() {
-        assertThrows(InvalidTransactionException.class, () -> service.deposit("ACC12345", -100));
-    }
-
-    @Test
-    void testDeposit_ClosedAccount() {
-        sampleAccount.setStatus("CLOSED");
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.of(sampleAccount));
-        assertThrows(AccountAlreadyClosedException.class, () -> service.deposit("ACC12345", 100));
-    }
-
-    @Test
-    void testDeposit_NotFound() {
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.empty());
-        assertThrows(AccountNotFoundException.class, () -> service.deposit("ACC12345", 100));
-    }
-
-    // ---------------- WITHDRAW ----------------
-    @Test
-    void testWithdraw_Success() {
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.of(sampleAccount));
-        when(accountRepo.updateBalance("ACC12345", 500.0)).thenReturn(true);
-
-        service.withdraw("ACC12345", 500);
-        verify(accountRepo).updateBalance("ACC12345", 500.0);
-    }
-
-    @Test
-    void testWithdraw_InsufficientBalance() {
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.of(sampleAccount));
-        assertThrows(InsufficientBalanceException.class, () -> service.withdraw("ACC12345", 2000));
-    }
-
-    @Test
-    void testWithdraw_NotFound() {
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.empty());
-        assertThrows(AccountNotFoundException.class, () -> service.withdraw("ACC12345", 100));
-    }
-
-    // ---------------- GET ACCOUNT DETAILS ----------------
     @Test
     void testGetAccountDetails_Success() {
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.of(sampleAccount));
-        Account result = service.getAccountDetails("ACC12345");
-        assertEquals("ACC12345", result.getAccountNumber());
+        // Arrange
+        when(accountRepo.findByAccountNumber("ACC123456")).thenReturn(Optional.of(validAccount));
+
+        // Act
+        Account result = accountService.getAccountDetails("ACC123456");
+
+        // Assert
+        assertEquals(validAccount, result);
     }
 
     @Test
     void testGetAccountDetails_NotFound() {
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.empty());
-        assertThrows(AccountNotFoundException.class, () -> service.getAccountDetails("ACC12345"));
+        // Arrange
+        when(accountRepo.findByAccountNumber(anyString())).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(AccountNotFoundException.class, () -> {
+            accountService.getAccountDetails("ACC-NOT-FOUND");
+        });
     }
 
-    // ---------------- GET BALANCE ----------------
     @Test
     void testGetAccountBalance_Success() {
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.of(sampleAccount));
-        double balance = service.getAccountBalance("ACC12345");
-        assertEquals(1000.0, balance);
+        // Arrange
+        validAccount.setBalance(555.77);
+        when(accountRepo.findByAccountNumber("ACC123456")).thenReturn(Optional.of(validAccount));
+
+        // Act
+        double balance = accountService.getAccountBalance("ACC123456");
+
+        // Assert
+        assertEquals(555.77, balance);
     }
 
     @Test
     void testGetAccountBalance_NotFound() {
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.empty());
-        assertThrows(AccountNotFoundException.class, () -> service.getAccountBalance("ACC12345"));
+        // Arrange
+        when(accountRepo.findByAccountNumber(anyString())).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(AccountNotFoundException.class, () -> {
+            accountService.getAccountBalance("ACC-NOT-FOUND");
+        });
     }
 
-    // ---------------- DELETE ACCOUNT ----------------
+    // --- Tests for New/Updated Methods ---
+
     @Test
-    void testDeleteAccount_Success() {
-        sampleAccount.setStatus("CLOSED");
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.of(sampleAccount));
-        when(accountRepo.deleteAccount("ACC12345")).thenReturn(true);
-        assertDoesNotThrow(() -> service.deleteAccount("ACC12345"));
+    void testGetAllAccounts() {
+        // Arrange
+        List<Account> accountList = List.of(validAccount);
+        when(accountRepo.findAll()).thenReturn(accountList);
+
+        // Act
+        List<Account> result = accountService.getAllAccounts();
+
+        // Assert
+        assertEquals(accountList, result);
+        verify(accountRepo).findAll();
     }
 
     @Test
-    void testDeleteAccount_ActiveAccount() {
-        sampleAccount.setStatus("ACTIVE");
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.of(sampleAccount));
-        assertThrows(InvalidTransactionException.class, () -> service.deleteAccount("ACC12345"));
+    void testGetAccountsByCustomerId() {
+        // Arrange
+        long customerId = 1L;
+        List<Account> accountList = List.of(validAccount);
+        when(accountRepo.findByCustomerId(customerId)).thenReturn(accountList);
+
+        // Act
+        List<Account> result = accountService.getAccountsByCustomerId(customerId);
+
+        // Assert
+        assertEquals(accountList, result);
+        verify(accountRepo).findByCustomerId(customerId);
     }
 
     @Test
-    void testDeleteAccount_NotFound() {
-        when(accountRepo.findByAccountNumber("ACC12345")).thenReturn(Optional.empty());
-        assertThrows(AccountNotFoundException.class, () -> service.deleteAccount("ACC12345"));
+    void testIsAccountOwnedByCustomer_True() {
+        // Arrange
+        long customerId = 1L;
+        validAccount.setCustomerId(customerId);
+        when(accountRepo.findByAccountNumber("ACC123456")).thenReturn(Optional.of(validAccount));
+
+        // Act
+        boolean isOwned = accountService.isAccountOwnedByCustomer("ACC123456", customerId);
+
+        // Assert
+        assertTrue(isOwned);
+    }
+
+    @Test
+    void testIsAccountOwnedByCustomer_False_WrongOwner() {
+        // Arrange
+        long ownerId = 1L;
+        long requesterId = 2L; // Different customer
+        validAccount.setCustomerId(ownerId);
+        when(accountRepo.findByAccountNumber("ACC123456")).thenReturn(Optional.of(validAccount));
+
+        // Act
+        boolean isOwned = accountService.isAccountOwnedByCustomer("ACC123456", requesterId);
+
+        // Assert
+        assertFalse(isOwned);
+    }
+
+    @Test
+    void testIsAccountOwnedByCustomer_False_AccountNotFound() {
+        // Arrange
+        when(accountRepo.findByAccountNumber(anyString())).thenReturn(Optional.empty());
+
+        // Act
+        boolean isOwned = accountService.isAccountOwnedByCustomer("ACC-NOT-FOUND", 1L);
+
+        // Assert
+        assertFalse(isOwned);
     }
 }

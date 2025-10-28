@@ -49,6 +49,17 @@ public class NotificationServiceImpl implements NotificationService {
 
         sendMail(senderEmail, senderSubject, senderBody);
 
+        // ✅ Read delay from config file
+        int delayMs = MailConfig.getMailSendDelayMs();
+        System.out.println("Waiting " + delayMs + " ms before sending receiver email to avoid rate limit...");
+
+        try {
+            Thread.sleep(delayMs); // 1-second delay
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            System.err.println("Email delay interrupted: " + e.getMessage());
+        }
+
         //Receiver Body
         String receiverBody = loadTemplate("mail-templates/receiver-transaction.html")
                 .replace("{customer}", senderName)

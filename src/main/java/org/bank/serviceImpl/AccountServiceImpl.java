@@ -60,40 +60,6 @@ public class AccountServiceImpl implements AccountService {
         if(!update) throw new RuntimeException("Failed to close account " + accountNumber);
     }
 
-    @Override
-    public void deposit(String accountNumber, double amount) {
-        // Validation
-        if (amount <= 0) throw new InvalidTransactionException("Deposit amount must be greater than 0.");
-
-        Account existing = accountRepo.findByAccountNumber(accountNumber)
-                .orElseThrow(() -> new AccountNotFoundException("Account not found for deposit."));
-
-        if ("CLOSED".equalsIgnoreCase(existing.getStatus())) throw new AccountAlreadyClosedException("Cannot deposit into a closed account.");
-
-        double newBalance = existing.getBalance() + amount;
-        boolean update = accountRepo.updateBalance(accountNumber, newBalance);
-        if(!update) throw new RuntimeException("Deposit failed for account " + accountNumber);
-    }
-
-
-
-    @Override
-    public void withdraw(String accountNumber, double amount) {
-        // Validation
-        if (amount <= 0) throw new InvalidTransactionException("Withdrawal amount must be greater than 0.");
-
-        Account existing = accountRepo.findByAccountNumber(accountNumber)
-                .orElseThrow(() -> new AccountNotFoundException("Account not found for withdrawal."));
-
-        if ("CLOSED".equalsIgnoreCase(existing.getStatus())) throw new AccountAlreadyClosedException("Cannot withdraw from a closed account.");
-        if (existing.getBalance() < amount) throw new InsufficientBalanceException("Insufficient balance.");
-
-        double newBalance = existing.getBalance() - amount;
-        boolean update = accountRepo.updateBalance(accountNumber, newBalance);
-        if(!update) throw new RuntimeException("Withdrawal failed for account " + accountNumber);
-    }
-
-
 
     @Override
     public Account getAccountDetails(String accountNumber) {
@@ -113,15 +79,14 @@ public class AccountServiceImpl implements AccountService {
     public List<Account> getAllAccounts() { return accountRepo.findAll(); }
 
     @Override
-    public void deleteAccount(String accountNumber){
-        Account existing = accountRepo.findByAccountNumber(accountNumber)
-                .orElseThrow(() -> new AccountNotFoundException("Account Number " + accountNumber + " not found."));
+    public List<Account> getAccountsByCustomerId(long customerId) {
+        return accountRepo.findByCustomerId(customerId);
+    }
 
-        if (!"CLOSED".equalsIgnoreCase(existing.getStatus())) {
-            throw new InvalidTransactionException("Cannot delete an active account. Close it first.");
-        }
-
-        boolean delete = accountRepo.deleteAccount(accountNumber);
-        if(!delete) throw new RuntimeException("Failed to delete account " + accountNumber);
+    @Override
+    public boolean isAccountOwnedByCustomer(String accountNumber, long customerId){
+        return accountRepo.findByAccountNumber(accountNumber)
+                .map(account -> account.getCustomerId() == customerId)
+                .orElse(false);
     }
 }

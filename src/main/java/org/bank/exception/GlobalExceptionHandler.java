@@ -35,6 +35,8 @@ public class GlobalExceptionHandler implements ExceptionMapper<Throwable> {
         // Transaction-related exception
         else if (exception instanceof TransactionFailedException) {
             status = Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
+        } else if (exception instanceof  TransactionNotFoundException) {
+            status = Response.Status.NOT_FOUND.getStatusCode();
         }
 
 

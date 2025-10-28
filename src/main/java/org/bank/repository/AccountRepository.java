@@ -11,9 +11,8 @@ public interface AccountRepository {
     Optional<Account> addAccount(Account account);
     Optional<Account> findByAccountNumber(String accountNumber);
     List<Account> findAll();
-    boolean updateBalance(String accountNumber, double newBalance);
     boolean updateAccountDetails(Account account);
-    boolean deleteAccount(String accountNumber);
+    List<Account> findByCustomerId(long accountId);
 
     // New methods for Transaction operation with Connectio parameter
     Optional<Account> findByAccountNumber(Connection conn, String accountNumber) throws SQLException;
