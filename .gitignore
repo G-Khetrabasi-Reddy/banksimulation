@@ -1,0 +1,30 @@
+# IntelliJ IDEA
+.idea/
+*.iml
+
+# Maven
+target/
+
+# Smart Tomcat (from your screenshot)
+.smarttomcat/
+
+# Log files
+*.log
+*.log.*
+
+# --- React/Node.js Ignores ---
+
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.env
+frontend/.env.local
+frontend/.env.development
+frontend/.env.production
+frontend/.env.development.local
+frontend/.env.production.local
+frontend/.env.test.local
+frontend/.eslintcache
+
+# Frontend build output (for production builds)
+frontend/build/
