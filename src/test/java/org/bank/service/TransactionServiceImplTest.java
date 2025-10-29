@@ -30,7 +30,6 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -47,7 +46,7 @@ class TransactionServiceImplTest {
     @Mock
     private NotificationService notificationService;
     @Mock
-    private Connection conn; // Mock the connection
+    private Connection conn;
 
     @InjectMocks
     private TransactionServiceImpl transactionService;
@@ -61,11 +60,9 @@ class TransactionServiceImplTest {
 
     @BeforeEach
     void setUp() throws SQLException {
-        // Mock the static DBConfig.getConnection()
         dbConfigMock = Mockito.mockStatic(DBConfig.class);
         dbConfigMock.when(DBConfig::getConnection).thenReturn(conn);
 
-        // Setup default mock behavior for a successful transaction
         senderCustomer = new Customer(1L, "Sender User", "9876543210", "sender@bank.com", "123 Send St", "1234", "111122223333", LocalDate.now(), "ACTIVE", "pass", "USER");
         senderAccount = new Account(101L, 1L, LocalDateTime.now(), LocalDateTime.now(), 1000.00, "SAVINGS", "Sender", "SENDER001", "ACTIVE", "BANK001");
 
@@ -75,49 +72,40 @@ class TransactionServiceImplTest {
 
     @AfterEach
     void tearDown() {
-        // Close the static mock
         dbConfigMock.close();
     }
 
     @Test
     void testTransferMoney_Success() throws SQLException {
-        // Arrange
         when(accountRepo.findByAccountNumber(conn, "SENDER001")).thenReturn(Optional.of(senderAccount));
         when(accountRepo.findByAccountNumber(conn, "RECEIVER001")).thenReturn(Optional.of(receiverAccount));
         when(customerRepo.findById(1L)).thenReturn(Optional.of(senderCustomer));
         when(customerRepo.findById(2L)).thenReturn(Optional.of(receiverCustomer));
         when(transactionRepo.saveTransaction(eq(conn), any(Transaction.class))).thenReturn(Optional.of(new Transaction()));
 
-        // Act
         Optional<Transaction> result = transactionService.transferMoney("SENDER001", "RECEIVER001", 100.00, "1234", "Test transfer", "ONLINE");
 
-        // Assert
         assertTrue(result.isPresent());
-        // Verify balances are updated correctly
+
         verify(accountRepo).updateBalance(conn, "SENDER001", 900.00);
         verify(accountRepo).updateBalance(conn, "RECEIVER001", 600.00);
-        // Verify transaction is saved and committed
         verify(transactionRepo).saveTransaction(eq(conn), any(Transaction.class));
         verify(conn).commit();
-        // Verify notification is sent
         verify(notificationService).emailAlert(anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), anyDouble());
     }
 
     @Test
     void testTransferMoney_InsufficientBalance() throws SQLException {
-        // Arrange
         senderAccount.setBalance(50.00); // Not enough for a 100.00 transfer
         when(accountRepo.findByAccountNumber(conn, "SENDER001")).thenReturn(Optional.of(senderAccount));
         when(accountRepo.findByAccountNumber(conn, "RECEIVER001")).thenReturn(Optional.of(receiverAccount));
         when(customerRepo.findById(1L)).thenReturn(Optional.of(senderCustomer));
         when(customerRepo.findById(2L)).thenReturn(Optional.of(receiverCustomer));
 
-        // Act & Assert
         assertThrows(InsufficientBalanceException.class, () -> {
             transactionService.transferMoney("SENDER001", "RECEIVER001", 100.00, "1234", "Test transfer", "ONLINE");
         });
 
-        // Verify no changes were made
         verify(accountRepo, never()).updateBalance(any(), anyString(), anyDouble());
         verify(transactionRepo, never()).saveTransaction(any(), any());
         verify(conn).rollback();
@@ -125,26 +113,21 @@ class TransactionServiceImplTest {
 
     @Test
     void testTransferMoney_InvalidPin() throws SQLException {
-        // Arrange
         when(accountRepo.findByAccountNumber(conn, "SENDER001")).thenReturn(Optional.of(senderAccount));
         when(accountRepo.findByAccountNumber(conn, "RECEIVER001")).thenReturn(Optional.of(receiverAccount));
         when(customerRepo.findById(1L)).thenReturn(Optional.of(senderCustomer));
         when(customerRepo.findById(2L)).thenReturn(Optional.of(receiverCustomer));
 
-        // Act & Assert
         assertThrows(InvalidTransactionException.class, () -> {
-            // Using "9999" as the wrong PIN
             transactionService.transferMoney("SENDER001", "RECEIVER001", 100.00, "9999", "Test transfer", "ONLINE");
         });
 
-        // Verify no changes were made
         verify(accountRepo, never()).updateBalance(any(), anyString(), anyDouble());
         verify(conn).rollback();
     }
 
     @Test
     void testTransferMoney_SameAccount() {
-        // Act & Assert
         assertThrows(InvalidTransactionException.class, () -> {
             transactionService.transferMoney("SENDER001", "SENDER001", 100.00, "1234", "Test transfer", "ONLINE");
         });

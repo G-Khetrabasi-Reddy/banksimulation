@@ -20,7 +20,7 @@ public class Customer {
 
     private String status;
 
-    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY) // can be set in request JSON but never sent back
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
     private String role;
@@ -43,7 +43,7 @@ public class Customer {
         this.role = role;
     }
 
-    // --- GETTERS ---
+    //  GETTERS
     public long getCustomerId() { return customerId; }
     public String getName() { return name; }
     public String getPhoneNumber() { return phoneNumber; }
@@ -59,7 +59,7 @@ public class Customer {
 
     public String getRole() { return role; }
 
-    // --- SETTERS ---
+    //  SETTERS
     public void setCustomerId(long customerId) { this.customerId = customerId; }
     public void setName(String name) { this.name = name; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
@@ -72,7 +72,7 @@ public class Customer {
     public void setPassword(String password) { this.password = password; }
     public void setRole(String role) { this.role = role; }
 
-    // --- toString() ---
+    //  toString()
     @Override
     public String toString() {
         return "Customer{" +

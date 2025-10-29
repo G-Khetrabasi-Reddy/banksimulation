@@ -24,7 +24,7 @@ public class AuthController {
 
     @Context
     private ContainerRequestContext requestContext;
-    // ------------------ SIGNUP ------------------
+    //  SIGNUP
     @POST
     @Path("/signup")
     public Response signup(Customer customer) {
@@ -39,7 +39,6 @@ public class AuthController {
         // Create a session
         String sessionId = SessionManager.createSession(savedCustomer);
 
-        // Return customer info without password and set session cookie
         NewCookie cookie = new NewCookie("sessionId", sessionId, "/", null, null, NewCookie.DEFAULT_MAX_AGE, false, true);
 
         return Response.status(Response.Status.CREATED)
@@ -61,7 +60,7 @@ public class AuthController {
                 )).build();
     }
 
-    // ------------------ LOGIN ------------------
+    //  LOGIN
     @POST
     @Path("/login")
     public Response login(Map<String, String> credentials) {
@@ -71,7 +70,7 @@ public class AuthController {
         Customer customer = customerService.findByEmail(email)
                 .orElseThrow(() -> new WebApplicationException("Invalid email or password", 401));
 
-        // Plain-text password check
+        // Password check
         if (!password.equals(customer.getPassword())) {
             throw new WebApplicationException("Invalid email or password", 401);
         }
@@ -79,7 +78,6 @@ public class AuthController {
         // Create a session
         String sessionId = SessionManager.createSession(customer);
 
-        // Return customer info without password and set session cookie
         NewCookie cookie = new NewCookie("sessionId", sessionId, "/", null, null, NewCookie.DEFAULT_MAX_AGE, false, true);
 
         return Response.ok()
@@ -101,7 +99,7 @@ public class AuthController {
                 )).build();
     }
 
-    // ------------------ LOGOUT ------------------
+    //  LOGOUT
     @POST
     @Path("/logout")
     public Response logout(@CookieParam("sessionId") String sessionId) {
@@ -120,11 +118,8 @@ public class AuthController {
     @GET
     @Path("/me")
     public Response getMe() {
-        // This endpoint is protected by AuthenticationFilter
-        // The filter puts the user object into the request context
         Customer loggedInCustomer = (Customer) requestContext.getProperty(AuthenticationFilter.SESSION_USER_PROPERTY);
 
-        // If the filter ran and we're here, the user is valid.
         return Response.ok(Map.of(
                 "user", Map.of(
                         "customerId", loggedInCustomer.getCustomerId(),

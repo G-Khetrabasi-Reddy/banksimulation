@@ -34,11 +34,9 @@ const HomePage = () => {
     },
   ]);
 
-  // Fetch data on component mount
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Fetch all data in parallel
         const [custRes, acctRes, transRes] = await Promise.all([
           getAllCustomers(),
           getAllAccounts(),
@@ -55,7 +53,7 @@ const HomePage = () => {
             icon: <Users size={28} />,
             bg: "bg-gradient-to-br from-blue-100 to-blue-50",
             color: "text-blue-600",
-            value: custCount.toLocaleString(), // Format number
+            value: custCount.toLocaleString(),
           },
           {
             title: "Total Accounts",

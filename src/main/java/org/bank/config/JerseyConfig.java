@@ -7,8 +7,8 @@ import org.glassfish.jersey.server.ResourceConfig;
 public class JerseyConfig extends ResourceConfig {
 
     public JerseyConfig() {
-        packages("org.bank"); // Scan your controllers, services, and exceptions
+        packages("org.bank");
         register(CORSFilter.class);
-        register(CustomJacksonProvider.class); // <-- Register the custom provider
+        register(CustomJacksonProvider.class);
     }
 }

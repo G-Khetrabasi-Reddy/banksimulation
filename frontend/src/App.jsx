@@ -8,8 +8,6 @@ import PublicLayout from "./layouts/PublicLayout";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import AdminRoute from "./components/common/AdminRoute";
 
-// --- Pages ---
-
 // Public Pages
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
@@ -31,16 +29,13 @@ const App = () => {
     return (
         <BrowserRouter>
             <Routes>
-                {/* --- Public Routes (Login, Signup) --- */}
                 <Route element={<PublicLayout />}>
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
                 </Route>
 
-                {/* --- Protected Routes (Main App) --- */}
                 <Route element={<ProtectedRoute layout={AppLayout} />}>
-                    
-                    {/* Common Routes */}
+
                     <Route path="/" element={<HomePage />} />
                     
                     {/* User Routes */}

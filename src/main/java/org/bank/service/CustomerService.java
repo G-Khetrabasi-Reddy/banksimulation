@@ -6,11 +6,10 @@ import java.util.Optional;
 
 public interface CustomerService {
 
-    Optional<Customer> addCustomer(Customer customer);        // Register new customer
-    Optional<Customer> findById(long customerId);             // Search customer by ID
-    List<Customer> findAll();                                 // List all customers
-    boolean updateCustomer(Customer customer);                // Update email, phone, status etc.
+    Optional<Customer> addCustomer(Customer customer);
+    Optional<Customer> findById(long customerId);
+    List<Customer> findAll();
+    boolean updateCustomer(Customer customer);
 
-    // 🔹 New method for login/authentication
     Optional<Customer> findByEmail(String email);
 }

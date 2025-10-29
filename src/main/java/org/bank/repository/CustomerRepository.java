@@ -12,6 +12,5 @@ public interface CustomerRepository {
     List<Customer> findAll();
     boolean updateCustomer(Customer customer);
 
-    // 🔹 New method for authentication or email lookup
     Optional<Customer> findByEmail(String email);
 }

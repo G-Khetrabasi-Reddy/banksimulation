@@ -10,7 +10,7 @@ public class DBSetup {
         try (Connection conn = DBConfig.getConnection();
              Statement stmt = conn.createStatement()) {
 
-            // ---------------- Customers Table ----------------
+            // Customers Table
             String createCustomersTable = """
                 CREATE TABLE IF NOT EXISTS customers (
                     customerId BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -30,7 +30,7 @@ public class DBSetup {
             stmt.executeUpdate(createCustomersTable);
 
 
-            // ---------------- Accounts Table ----------------
+            // Accounts Table
             String createAccountsTable = """
                 CREATE TABLE IF NOT EXISTS accounts (
                     accountId BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -48,7 +48,7 @@ public class DBSetup {
                 """;
             stmt.executeUpdate(createAccountsTable);
 
-            // ---------------- Transactions Table ----------------
+            //  Transactions Table
             String createTransactionsTable = """
                 CREATE TABLE transactions (
                       transactionId BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,

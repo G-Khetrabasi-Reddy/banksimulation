@@ -28,9 +28,6 @@ const LoginPage = () => {
 
     return (
         <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
-            {/* This container is now set to a specific width of 28rem (the same as max-w-md)
-              and max-w-full allows it to shrink on smaller screens.
-            */}
             <div className="w-[28rem] max-w-full space-y-6">
                 {/* Header */}
                 <div className="w-full bg-white rounded-lg shadow-md border border-gray-200 p-6">
@@ -81,7 +78,7 @@ const LoginPage = () => {
                         </div>
 
                         {/* Error Message */}
-                        <div className="min-h-[3.5rem]"> {/* This reserves space for the error */}
+                        <div className="min-h-[3.5rem]">
                             {error && (
                                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                                     <p className="text-red-700 font-medium text-sm">{error}</p>

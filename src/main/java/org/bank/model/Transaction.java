@@ -30,7 +30,7 @@ public class Transaction {
         this.description = description;
     }
 
-    // --- Getters and Setters ---
+    // Getters and Setters
 
     public long getTransactionId() { return transactionId; }
     public void setTransactionId(long transactionId) { this.transactionId = transactionId; }
@@ -56,6 +56,7 @@ public class Transaction {
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
+    // toString()
     @Override
     public String toString() {
         return "Transaction{" +

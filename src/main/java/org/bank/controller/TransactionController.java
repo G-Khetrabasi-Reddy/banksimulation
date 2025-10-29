@@ -40,7 +40,6 @@ public class TransactionController {
     @POST
     @Path("/transfer")
     public Response performTransfer(@Context ContainerRequestContext requestContext, Map<String, Object> request) {
-        // --- Ownership check ---
         Customer loggedInCustomer = (Customer) requestContext.getProperty(AuthenticationFilter.SESSION_USER_PROPERTY);
         String senderAccountNumber = (String) request.get("senderAccountNumber");
         if (!transactionService.isAccountOwnedByCustomer(senderAccountNumber, loggedInCustomer.getCustomerId())) {
@@ -79,7 +78,6 @@ public class TransactionController {
 
         Optional<Transaction> transactionOpt = transactionService.getTransactionById(transactionId);
 
-        // More explicit handling using orElseThrow or similar
         Transaction transaction = transactionOpt.orElseThrow(
                 () -> new TransactionNotFoundException("Transaction not found for ID: " + transactionId) // Use a specific exception
         );
@@ -92,7 +90,7 @@ public class TransactionController {
 
     @GET
     @Path("/getByAccount/csv")
-    @Produces("text/csv") // This is for the container
+    @Produces("text/csv")
     public Response getTransactionsByAccountCSV(@QueryParam("accountNumber") String accountNumber) {
         if (accountNumber == null || accountNumber.isBlank()) {
             throw new InvalidTransactionException("Account number must be provided.");
@@ -162,8 +160,6 @@ public class TransactionController {
 
         byte[] csvBytes = csvBuilder.toString().getBytes();
 
-        // --- THE FIX IS HERE ---
-        // We must explicitly set the "Content-Type" for the Response object
         return Response.ok(csvBytes)
                 .type("text/csv") // <-- THIS LINE IS THE FIX
                 .header("Content-Disposition", "attachment; filename=\"transactions_" + accountNumber + ".csv\"")

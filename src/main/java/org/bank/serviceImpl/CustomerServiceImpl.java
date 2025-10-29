@@ -20,7 +20,6 @@ public class CustomerServiceImpl implements CustomerService {
         customerRepo = new CustomerRepositoryImpl();
     }
 
-    // Parameterized constructor (for testing or custom injection)
     public CustomerServiceImpl(CustomerRepository customerRepo){
         this.customerRepo = customerRepo;
     }

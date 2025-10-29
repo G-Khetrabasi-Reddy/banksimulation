@@ -8,12 +8,11 @@ import java.io.InputStream;
 
 public class DBConfig {
 
-    private static Properties prop = new Properties(); // Create Properties object to read key-value pairs
+    private static Properties prop = new Properties();
 
     static {
         try (InputStream input = DBConfig.class.getClassLoader()
-                .getResourceAsStream("application.properties")) { // Load the properties file from resources
-
+                .getResourceAsStream("application.properties")) {
 
             if (input != null) {
                 // Load all properties from the file

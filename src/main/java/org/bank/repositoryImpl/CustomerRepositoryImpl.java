@@ -120,7 +120,6 @@ public class CustomerRepositoryImpl implements CustomerRepository {
         }
     }
 
-    // 🔹 NEW: findByEmail for login/authentication
     public Optional<Customer> findByEmail(String email) {
         String sql = "SELECT * FROM customers WHERE email = ?";
 
@@ -141,7 +140,6 @@ public class CustomerRepositoryImpl implements CustomerRepository {
         return Optional.empty();
     }
 
-    // 🔹 Utility: Convert ResultSet → Customer object
     private Customer mapResultSetToCustomer(ResultSet rs) throws SQLException {
         return new Customer(
                 rs.getLong("customerId"),
@@ -158,7 +156,7 @@ public class CustomerRepositoryImpl implements CustomerRepository {
         );
     }
 
-    // 🔹 Centralized Exception Handling
+    // Centralized Exception Handling
     private void handleSQLException(SQLException e) {
         String errorMessage = "Database error: " + e.getMessage()
                 + " [SQLState=" + e.getSQLState()

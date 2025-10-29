@@ -133,13 +133,12 @@ public class TransactionServiceImpl implements TransactionService {
                     ex.printStackTrace();
                 }
             }
-            // Re-throw other exceptions (AccountNotFound, etc.) to be handled by the controller
             throw e;
         }
         finally {
             if (conn != null) {
                 try {
-                    conn.setAutoCommit(true); //Rest to default
+                    conn.setAutoCommit(true);
                     conn.close();
                 } catch (SQLException e) {
                     e.printStackTrace();
@@ -169,14 +168,14 @@ public class TransactionServiceImpl implements TransactionService {
     @Override
     public String getAccountNumberById(long accountId) {
         return accountRepo.findAccountNumberById(accountId)
-                .orElse("UNKNOWN");  // Returns "UNKNOWN" if accountId does not exist
+                .orElse("UNKNOWN");
     }
 
     @Override
     public boolean isAccountOwnedByCustomer(String accountNumber, long customerId) {
         return accountRepo.findByAccountNumber(accountNumber)
                 .map(account -> account.getCustomerId() == customerId)  // primitive long comparison
-                .orElse(false);  // account not found -> not owned
+                .orElse(false);
     }
 
 

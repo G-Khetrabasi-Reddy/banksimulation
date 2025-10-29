@@ -30,7 +30,7 @@ public class CustomerController {
         this.service = service;
     }
 
-    // GET -> fetch customer by ID
+    // GET customer by ID
     @GET
     @Path("/getbyid")
     public Response getCustomerById(@QueryParam("customerId") Long customerId) {
@@ -48,7 +48,7 @@ public class CustomerController {
         )).build();
     }
 
-    // GET -> fetch all customers
+    // GET all customers
     @GET
     @Path("/all")
     public Response getAllCustomers() {
@@ -59,7 +59,7 @@ public class CustomerController {
         )).build();
     }
 
-    // PUT -> update customer details (ownership enforced)
+    // PUT customer details (ownership enforced)
     @PUT
     @Path("/update")
     public Response updateCustomer(@Context ContainerRequestContext requestContext, Customer customer) {
@@ -76,6 +76,4 @@ public class CustomerController {
                 "updated", result
         )).build();
     }
-
-    // DELETE removed (customers cannot be deleted)
 }

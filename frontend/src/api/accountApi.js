@@ -1,69 +1,49 @@
-// src/api/accountApi.js
-import api from './axiosConfig'; // Import the configured axios instance
+import api from './axiosConfig';
 
-// --- MOCK DATABASE IS REMOVED ---
 
-/**
- * 筐 Open a new account
- * Calls POST /api/account/open
- */
+//Open a new account
 export const openAccount = async (accountData) => {
   console.log("API: openAccount", accountData);
   const response = await api.post('/account/open', accountData);
-  return response.data; // e.g., { message, account }
+  return response.data;
 };
 
-/**
- * 搭 Get all accounts for the logged-in user
- * Calls GET /api/account/my-accounts
- */
+
+//Get all accounts for the logged-in user
 export const getMyAccounts = async () => {
   console.log("API: getMyAccounts");
   const response = await api.get('/account/my-accounts');
-  return response.data; // e.g., { message, accounts }
+  return response.data;
 };
 
-/**
- * 搭 Get all accounts (for Admin)
- * Calls GET /api/account/all
- */
+// Get all accounts (for Admin)
 export const getAllAccounts = async () => {
   console.log("API: getAllAccounts");
   const response = await api.get('/account/all');
-  return response.data; // e.g., { message, accounts }
+  return response.data;
 };
 
-/**
- * 剥 Get account details
- * Calls GET /api/account/details?accountNumber=...
- */
+//Get account details
 export const getAccountDetails = async (accountNumber) => {
   console.log("API: getAccountDetails", accountNumber);
   const response = await api.get('/account/details', {
     params: { accountNumber }
   });
-  return response.data; // e.g., Account object
+  return response.data;
 };
 
-/**
- * 腸 Get account balance
- * Calls GET /api/account/balance?accountNumber=...
- */
+//Get account balance
 export const getAccountBalance = async (accountNumber) => {
   console.log("API: getAccountBalance", accountNumber);
   const response = await api.get('/account/balance', {
     params: { accountNumber }
   });
-  return response.data; // e.g., { accountNumber, balance }
+  return response.data;
 };
 
-/**
- * 白 Close an account
- * Calls PUT /api/account/close
- */
+//Close an account
 export const closeAccount = async (accountNumber) => {
   console.log("API: closeAccount", accountNumber);
-  // Backend expects a JSON body: { "accountNumber": "..." }
   const response = await api.put('/account/close', { accountNumber });
-  return response.data; // e.g., { message }
+  return response.data;
 };

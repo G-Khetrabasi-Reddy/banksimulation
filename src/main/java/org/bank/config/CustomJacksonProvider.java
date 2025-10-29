@@ -14,8 +14,8 @@ public class CustomJacksonProvider implements ContextResolver<ObjectMapper> {
 
     public CustomJacksonProvider() {
         mapper = new ObjectMapper();
-        mapper.registerModule(new Jdk8Module());      // For Optional
-        mapper.registerModule(new JavaTimeModule());  // For LocalDate/LocalDateTime
+        mapper.registerModule(new Jdk8Module());
+        mapper.registerModule(new JavaTimeModule());
         mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
     }
 

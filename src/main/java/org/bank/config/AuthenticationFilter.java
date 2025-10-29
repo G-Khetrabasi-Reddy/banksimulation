@@ -22,12 +22,11 @@ public class AuthenticationFilter implements ContainerRequestFilter {
     public void filter(ContainerRequestContext requestContext) throws IOException {
         String path = requestContext.getUriInfo().getPath();
 
-        // 1. Allow public access to /auth endpoints
         if (path.startsWith("auth/login") || path.equals("auth/signup")) {
             return;
         }
 
-        // 2. Get the sessionId cookie
+        // Get the sessionId cookie
         Cookie sessionCookie = requestContext.getCookies().get("sessionId");
         if (sessionCookie == null) {
             abort(requestContext);
@@ -37,13 +36,13 @@ public class AuthenticationFilter implements ContainerRequestFilter {
         String sessionId = sessionCookie.getValue();
         Customer customer = SessionManager.getCustomer(sessionId);
 
-        // 3. Validate session
+        // Validate session
         if (customer == null) {
             abort(requestContext);
             return;
         }
 
-        // 4. Store user info in request context for controllers to use
+        // Store user info in request context for controllers to use
         requestContext.setProperty(SESSION_USER_PROPERTY, customer);
     }
 

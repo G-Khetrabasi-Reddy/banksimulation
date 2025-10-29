@@ -23,7 +23,7 @@ public class TransactionResponse {
         this.description = description;
     }
 
-    // --- Getters and Setters ---
+    //  Getters and Setters
     public long getTransactionId() { return transactionId; }
     public void setTransactionId(long transactionId) { this.transactionId = transactionId; }
 
